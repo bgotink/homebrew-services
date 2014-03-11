@@ -140,7 +140,7 @@ module ServicesCli
     def argh(msg, fail = true); "#{Tty.red}Error#{Tty.reset}: #{msg}".tap { |s| fail ? abort(s) : STDERR.puts(s) } end
 
     # Find all currently running services via launchctl list
-    def running; %x{#{launchctl} list | grep com.github.homebrew}.chomp.split("\n").map { |svc| $1 if svc =~ /(com\.github\.homebrew\..+)\z/ }.compact end
+    def running; %x{#{launchctl} list | grep homebrew.mxcl}.chomp.split("\n").map { |svc| $1 if svc =~ /(homebrew\.mxcl\..+)\z/ }.compact end
 
     # Check if running as homebre and load required libraries et al.
     def homebrew!
@@ -151,7 +151,7 @@ module ServicesCli
     end
 
     # Access current service
-    def service; @service ||= Service.new(Formula.factory(Formula.resolve_alias(@formula))) if @formula end
+    def service; @service ||= Service.new(Formula.factory(Formula.canonical_name(@formula))) if @formula end
 
     # Print usage and `exit(...)` with supplied exit code, if code
     # is set to `false`, then exit is ignored.
@@ -235,7 +235,7 @@ module ServicesCli
       end
       
       # 2. remove unused plist files
-      Dir[path + 'com.github.homebrew.*.plist'].each do |file|
+      Dir[path + 'homebrew.mxcl.*.plist'].each do |file|
         unless running.include?(File.basename(file).sub(/\.plist$/i, ''))
           puts "Removing unused plist #{file}"
           rm file
@@ -329,8 +329,8 @@ class Service
 
   # Create a new `Service` instance from either a path or label.
   def self.from(path_or_label)
-    return nil unless path_or_label =~ /com\.github\.homebrew\.([^\.]+)(\.plist)?\z/
-    new(Formula.factory(Formula.resolve_alias($1))) rescue nil
+    return nil unless path_or_label =~ /homebrew\.mxcl\.([^\.]+)(\.plist)?\z/
+    new(Formula.factory(Formula.canonical_name($1))) rescue nil
   end
 
   # Initialize new `Service` instance with supplied formula.
@@ -339,10 +339,10 @@ class Service
   # Delegate access to `formula.name`.
   def name; @name ||= formula.name end
 
-  # Label, static, always looks like `com.github.homebrew.<formula>`.
-  def label; @label ||= "com.github.homebrew.#{name}" end
+  # Label, static, always looks like `homebrew.mxcl.<formula>`.
+  def label; @label ||= "homebrew.mxcl.#{name}" end
 
-  # Path to a static plist file, this is always `com.github.homebrew.<formula>.plist`.
+  # Path to a static plist file, this is always `homebrew.mxcl.<formula>.plist`.
   def plist; @plist ||= formula.prefix + "#{label}.plist" end
 
   # Path to destination plist, if run as root it's in `boot_path`, else `user_path`.
@@ -371,7 +371,7 @@ class Service
       data = open(data).read
     end
   
-    # replace "template" variables and ensure label is always, always com.github.homebrew.<formula>
+    # replace "template" variables and ensure label is always, always homebrew.mxcl.<formula>
     data = data.to_s.gsub(/\{\{([a-z][a-z0-9_]*)\}\}/i) { |m| formula.send($1).to_s if formula.respond_to?($1) }.
               gsub(%r{(<key>Label</key>\s*<string>)[^<]*(</string>)}, '\1' + label + '\2')
 
